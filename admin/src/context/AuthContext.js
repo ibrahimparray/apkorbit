@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { authApi } from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -9,65 +8,88 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const checkAuth = useCallback(async () => {
+  // ✅ SIMPLE AUTH CHECK (NO API CALL = NO CRASH)
+  const checkAuth = useCallback(() => {
     const isStore = router.pathname.startsWith('/store');
-    if (isStore) { setLoading(false); return; }
 
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (isStore) {
       setLoading(false);
-      if (router.pathname !== '/login') {
-        router.push('/login');
-      }
       return;
     }
 
-    try {
-      const data = await authApi.me();
-      setUser(data.user);
-      if (router.pathname === '/login') {
-        router.push('/');
-      }
-    } catch {
-      localStorage.removeItem('token');
+    const token = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+
+    if (token && savedUser) {
+      setUser(JSON.parse(savedUser));
+    } else {
       setUser(null);
+
       if (router.pathname !== '/login') {
         router.push('/login');
       }
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   }, [router]);
 
+  // run once on load
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
+  // ✅ LOGIN FUNCTION
   const login = async (email, password) => {
-    const data = await authApi.login({ email, password });
-    if (data.token) {
-      localStorage.setItem('token', data.token);
-      setUser(data.user);
-      router.push('/');
+    const res = await fetch('https://apkorbit.onrender.com/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (!data.success && !data.token) {
+      throw new Error(data.message || 'Login failed');
     }
+
+    // ✅ SAVE DATA (IMPORTANT FIX)
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+
+    setUser(data.user);
+
+    router.push('/');
     return data;
   };
 
+  // ✅ LOGOUT
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
     router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      logout,
+      checkAuth
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
+// hook
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
   return context;
 };
