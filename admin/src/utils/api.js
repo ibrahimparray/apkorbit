@@ -1,4 +1,4 @@
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || '/api').replace(/\/+$/, '');
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://apkorbit.onrender.com').replace(/\/+$/, '');
 
 class ApiClient {
   constructor() {
