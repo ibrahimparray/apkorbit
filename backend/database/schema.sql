@@ -1,0 +1,199 @@
+-- ============================================================
+-- PRIVATE APK STORE - Database Schema
+-- MySQL 8.0+ Optimized
+-- ============================================================
+
+CREATE DATABASE IF NOT EXISTS apk_store
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE apk_store;
+
+-- ============================================================
+-- USERS TABLE
+-- ============================================================
+CREATE TABLE users (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(191) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  role ENUM('admin', 'editor') NOT NULL DEFAULT 'admin',
+  avatar VARCHAR(500) NULL,
+  twofa_secret VARCHAR(255) NULL,
+  twofa_enabled TINYINT(1) DEFAULT 0,
+  remember_token VARCHAR(500) NULL,
+  last_login_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_users_email (email),
+  INDEX idx_users_role (role)
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- CATEGORIES TABLE
+-- ============================================================
+CREATE TABLE categories (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  slug VARCHAR(120) NOT NULL UNIQUE,
+  description TEXT NULL,
+  icon VARCHAR(100) NULL DEFAULT 'folder',
+  color VARCHAR(7) NULL DEFAULT '#6366f1',
+  sort_order INT DEFAULT 0,
+  is_active TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_categories_slug (slug),
+  INDEX idx_categories_active (is_active),
+  INDEX idx_categories_sort (sort_order)
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- APPS TABLE
+-- ============================================================
+CREATE TABLE apps (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  category_id BIGINT UNSIGNED NULL,
+  name VARCHAR(200) NOT NULL,
+  package_name VARCHAR(255) NOT NULL UNIQUE,
+  slug VARCHAR(255) NOT NULL UNIQUE,
+  description LONGTEXT NULL,
+  short_description VARCHAR(300) NULL,
+  icon_url VARCHAR(500) NULL,
+  banner_url VARCHAR(500) NULL,
+  screenshots JSON NULL,
+  website_url VARCHAR(500) NULL,
+  is_featured TINYINT(1) DEFAULT 0,
+  is_published TINYINT(1) DEFAULT 1,
+  is_archived TINYINT(1) DEFAULT 0,
+  total_downloads BIGINT UNSIGNED DEFAULT 0,
+  latest_version_id BIGINT UNSIGNED NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_apps_package (package_name),
+  INDEX idx_apps_slug (slug),
+  INDEX idx_apps_published (is_published),
+  INDEX idx_apps_featured (is_featured),
+  INDEX idx_apps_category (category_id),
+  INDEX idx_apps_downloads (total_downloads DESC),
+  INDEX idx_apps_created (created_at DESC),
+  FULLTEXT idx_apps_search (name, description, short_description),
+  CONSTRAINT fk_apps_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+  CONSTRAINT fk_apps_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- APP VERSIONS TABLE
+-- ============================================================
+CREATE TABLE app_versions (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  app_id BIGINT UNSIGNED NOT NULL,
+  version_name VARCHAR(50) NOT NULL,
+  version_code INT UNSIGNED NOT NULL,
+  changelog TEXT NULL,
+  file_url VARCHAR(500) NOT NULL,
+  file_size BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  md5_hash VARCHAR(32) NULL,
+  min_sdk INT UNSIGNED NULL DEFAULT 21,
+  target_sdk INT UNSIGNED NULL DEFAULT 34,
+  is_signed TINYINT(1) DEFAULT 1,
+  is_current TINYINT(1) DEFAULT 0,
+  downloads_count BIGINT UNSIGNED DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_versions_app (app_id),
+  INDEX idx_versions_code (app_id, version_code DESC),
+  INDEX idx_versions_current (app_id, is_current),
+  CONSTRAINT fk_versions_app FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Add FK for latest_version_id
+ALTER TABLE apps
+  ADD CONSTRAINT fk_apps_latest_version
+  FOREIGN KEY (latest_version_id) REFERENCES app_versions(id) ON DELETE SET NULL;
+
+-- ============================================================
+-- DOWNLOADS TABLE
+-- ============================================================
+CREATE TABLE downloads (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  app_id BIGINT UNSIGNED NOT NULL,
+  version_id BIGINT UNSIGNED NOT NULL,
+  device_id VARCHAR(255) NULL,
+  device_name VARCHAR(200) NULL,
+  device_model VARCHAR(200) NULL,
+  android_version VARCHAR(50) NULL,
+  ip_address VARCHAR(45) NULL,
+  user_agent TEXT NULL,
+  downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_downloads_app (app_id),
+  INDEX idx_downloads_version (version_id),
+  INDEX idx_downloads_date (downloaded_at DESC),
+  INDEX idx_downloads_device (device_id),
+  CONSTRAINT fk_downloads_app FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE,
+  CONSTRAINT fk_downloads_version FOREIGN KEY (version_id) REFERENCES app_versions(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- SETTINGS TABLE
+-- ============================================================
+CREATE TABLE settings (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `key` VARCHAR(100) NOT NULL UNIQUE,
+  `value` LONGTEXT NULL,
+  `type` ENUM('string', 'boolean', 'integer', 'json', 'file') DEFAULT 'string',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_settings_key (`key`)
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- ACTIVITY LOGS TABLE
+-- ============================================================
+CREATE TABLE activity_logs (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NULL,
+  action VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(50) NULL,
+  entity_id BIGINT UNSIGNED NULL,
+  details JSON NULL,
+  ip_address VARCHAR(45) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_activity_user (user_id),
+  INDEX idx_activity_action (action),
+  INDEX idx_activity_date (created_at DESC),
+  CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- INSERT DEFAULT DATA
+-- ============================================================
+
+-- Default admin user (password: admin123)
+INSERT INTO users (name, email, password, role) VALUES
+('Admin', 'admin@apkstore.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
+
+-- Default categories
+INSERT INTO categories (name, slug, description, icon, color, sort_order) VALUES
+('Productivity', 'productivity', 'Boost your workflow with productivity tools', 'zap', '#8b5cf6', 1),
+('AI Tools', 'ai-tools', 'Artificial intelligence powered applications', 'cpu', '#06b6d4', 2),
+('Utilities', 'utilities', 'Essential utility apps for daily use', 'tool', '#f59e0b', 3),
+('Business', 'business', 'Business and enterprise applications', 'briefcase', '#10b981', 4),
+('Social', 'social', 'Stay connected with social apps', 'users', '#ec4899', 5),
+('Personal', 'personal', 'Personal productivity and lifestyle', 'heart', '#ef4444', 6),
+('Education', 'education', 'Learning and educational tools', 'book-open', '#6366f1', 7),
+('Entertainment', 'entertainment', 'Games, media, and entertainment', 'film', '#14b8a6', 8),
+('Development', 'development', 'Developer tools and IDEs', 'code', '#3b82f6', 9),
+('Security', 'security', 'Security and privacy applications', 'shield', '#dc2626', 10);
+
+-- Default settings
+INSERT INTO settings (`key`, `value`, `type`) VALUES
+('site_name', 'Private App Store', 'string'),
+('site_logo', NULL, 'file'),
+('theme', 'dark', 'string'),
+('allow_public_access', 'false', 'boolean'),
+('max_upload_size', '100', 'integer'),
+('app_signing_enabled', 'true', 'boolean'),
+('maintenance_mode', 'false', 'boolean'),
+('api_rate_limit', '60', 'integer'),
+('store_email', 'admin@apkstore.local', 'string');

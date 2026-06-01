@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: apk-store-backend
+    runtime: node
+    repo: https://github.com/yourusername/apk-store
+    branch: main
+    rootDir: apk-store/backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_NAME
+        value: Private App Store
+      - key: PORT
+        value: "5000"
+      - key: DB_HOST
+        fromDatabase:
+          name: apk-store-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: apk-store-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: apk-store-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: apk-store-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: apk-store-db
+          property: database
+      - key: DB_SSL
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: MAX_UPLOAD_SIZE
+        value: "104857600"
+      - key: UPLOAD_PATH
+        value: ./uploads
+      - key: CORS_ORIGIN
+        value: https://your-admin.vercel.app,https://your-store.vercel.app
+      - key: API_RATE_LIMIT
+        value: "500"
+
+databases:
+  - name: apk-store-db
+    databaseName: apk_store
+    plan: free
