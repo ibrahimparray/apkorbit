@@ -1,10 +1,10 @@
-services:
+is it all right   services:
   - type: web
     name: apk-store-backend
     runtime: node
-    repo: https://github.com/yourusername/apk-store
+    repo: https://github.com/ibrahimparray/backend 
     branch: main
-    rootDir: apk-store/backend
+    rootDir: .
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
@@ -46,7 +46,7 @@ services:
       - key: UPLOAD_PATH
         value: ./uploads
       - key: CORS_ORIGIN
-        value: https://your-admin.vercel.app,https://your-store.vercel.app
+        value: https://apkorbit.vercel.app
       - key: API_RATE_LIMIT
         value: "500"
 
