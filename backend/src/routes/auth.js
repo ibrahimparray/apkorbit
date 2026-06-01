@@ -1,30 +1,25 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const jwt = require("jsonwebtoken");
 
-// 🔥 LOGIN WITHOUT DATABASE
-router.post("/login", (req, res) => {
-  const { email, password } = req.body;
+router.post('/login', (req, res) => {
+  const { email, password } = req.body || {};
 
-  if (email === "admin@demo.com" && password === "123456") {
-    const token = jwt.sign(
-      { id: 1, role: "admin" },
-      process.env.JWT_SECRET || "secret",
-      { expiresIn: "1d" }
-    );
-
+  if (email === 'admin@demo.com' && password === '123456') {
     return res.json({
-      token,
+      success: true,
+      token: 'simple-token-123',
       user: {
         id: 1,
-        name: "Admin",
-        email,
-        role: "admin"
+        name: 'Admin',
+        email
       }
     });
   }
 
-  return res.status(400).json({ message: "Invalid credentials" });
+  return res.status(401).json({
+    success: false,
+    message: 'Invalid credentials'
+  });
 });
 
 module.exports = router;
