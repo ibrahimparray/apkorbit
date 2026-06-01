@@ -23,12 +23,18 @@ app.use(helmet({
 
 // CORS
 const corsOrigins = (process.env.CORS_ORIGIN || '*').split(',').map(s => s.trim());
-app.use(cors({
-  origin: corsOrigins,
+const corsConfig = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-}));
+};
+if (corsOrigins.includes('*')) {
+  corsConfig.origin = '*';
+  corsConfig.credentials = false;
+} else {
+  corsConfig.origin = corsOrigins;
+}
+app.use(cors(corsConfig));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -117,6 +123,7 @@ app.listen(PORT, () => {
   if (!IS_PROD) {
     console.log(`Health check: http://localhost:${PORT}/health`);
   }
+  console.log(`Environment: ${IS_PROD ? 'production' : 'development'}`);
 });
 
 module.exports = app;
