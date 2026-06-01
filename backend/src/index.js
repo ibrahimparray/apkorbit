@@ -6,7 +6,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
-const apiRoutes = require('./routes/api');
+//onst apiRoutes = require('./routes/api');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -69,7 +69,7 @@ app.use('/uploads', express.static(uploadsDir, {
 }));
 
 // API Routes
-app.use('/api', apiRoutes);
+//app.use('/api', apiRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -105,7 +105,8 @@ if (fs.existsSync(publicDir)) {
     app.get('/store/app/:id', (req, res) => res.sendFile(path.join(publicDir, 'store/app/0.html')));
     app.get('/store/category/:slug', (req, res) => res.sendFile(path.join(publicDir, 'store/category/all.html')));
   }
-}
+
+app.use('/api/auth', require('./routes/auth'));
 
 // 404 handler
 app.use((req, res) => {
